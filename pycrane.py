@@ -56,6 +56,10 @@ def get_config(image_file: str | None = None) -> dict:
     elif args.image_file is None:
         args.image_file = input("Please enter the image data file: ").strip()
 
+    if not (os.path.exists(args.image_file) and os.path.isfile(args.image_file)):
+        print(f"ERROR - Invalid image data file: '{args.image_file}'.")
+        sys.exit(1)
+
     if args.source_auth:
         config["SOURCE_REGISTRY_URL"] = None
         config["SOURCE_REGISTRY_USER"] = None
@@ -65,10 +69,6 @@ def get_config(image_file: str | None = None) -> dict:
         config["TARGET_REGISTRY_URL"] = None
         config["TARGET_REGISTRY_USER"] = None
         config["TARGET_REGISTRY_KEY"] = None
-
-    if not (os.path.exists(args.image_file) and os.path.isfile(args.image_file)):
-        print(f"ERROR - Invalid image data file: '{args.image_file}'.")
-        sys.exit(1)
 
     # Grab config values from env or user input
     for key, val in config.items():
