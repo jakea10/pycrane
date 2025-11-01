@@ -1,0 +1,14 @@
+[
+    {
+        "name": "my-image",
+        "tag": "latest",
+        "source_repo": "registry.source.com/my-image",
+        "target_repo": "registry.target.com/my-image"
+    },
+    {
+        "name": "another-image",
+        "tag": "1.2.3",
+        "source_repo": "registry.source.com/another-image",
+        "target_repo": "registry.target.com/another-image"
+    }
+]
