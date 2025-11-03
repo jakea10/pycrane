@@ -101,15 +101,20 @@ def main(
     ] = None,
 ):
     err_console = Console(stderr=True)
+    error_prefix = "[bold red]Error:[/]"
 
     if (source_username or source_password) and not source_registry:
-        err_console.print("Error: --source-registry is required when --source-username and --source-password are provided.")
+        err_console.print(
+            f"{error_prefix} --source-registry is required when --source-username and --source-password are provided."
+        )
         raise typer.Exit(code=1)
-    
+
     if (target_username or target_password) and not target_registry:
-        err_console.print("Error: --target-registry is required when --target-username and --target-password are provided.")
+        err_console.print(
+            f"{error_prefix} --target-registry is required when --target-username and --target-password are provided."
+        )
         raise typer.Exit(code=1)
-    
+
     try:
         # Parse container image data
         with open(image_file, mode="r") as f:
@@ -124,7 +129,7 @@ def main(
                 for image in json.load(f)
             ]
     except FileNotFoundError:
-        err_console.print(f"Error: Image file not found: '{image_file}'")
+        err_console.print(f"{error_prefix} Image file not found: '{image_file}'")
         raise typer.Exit(code=1)
 
     if not force:
@@ -137,8 +142,6 @@ def main(
         user_continue = typer.confirm("Continue?", abort=True)
         print("Alrighty, let's go! :rocket:")
 
-    print(source_username, source_password)
-    print(target_username, target_password)
 
 
 if __name__ == "__main__":
