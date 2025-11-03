@@ -1,3 +1,4 @@
+import docker
 import json
 import typer
 from typing_extensions import Annotated
@@ -118,7 +119,7 @@ def main(
     try:
         # Parse container image data
         with open(image_file, mode="r") as f:
-            print("[bold blue]Parsing container image data...")
+            print("[bold blue]INFO: Parsing container image data...")
             images = [
                 ContainerImage(
                     image["name"],
@@ -128,6 +129,7 @@ def main(
                 )
                 for image in json.load(f)
             ]
+            print("[bold blue]INFO: Successfully parsed container image data.")
     except FileNotFoundError:
         err_console.print(f"{error_prefix} Image file not found: '{image_file}'")
         raise typer.Exit(code=1)
@@ -142,6 +144,37 @@ def main(
         user_continue = typer.confirm("Continue?", abort=True)
         print("Alrighty, let's go! :rocket:")
 
+    # --- Docker operations ---
+    # If using Docker Desktop, you must allow the default Docker socket to be used
+    client = docker.from_env()
+
+    if source_registry and source_username and source_password:
+        try:
+            client.login(source_username, source_password, registry=source_registry)
+        except docker.errors.APIError as e:
+            err_console.print(e)
+            raise typer.Exit(code=1)
+
+    if target_registry and target_username and target_password:
+        try:
+            client.login(target_username, target_password, registry=target_registry)
+        except docker.errors.APIError as e:
+            err_console.print(e)
+            raise typer.Exit(code=1)
+
+    # docker_logins = []
+    # if source_registry and source_username and source_password:
+    #     docker_logins.append(
+    #         f"docker login -u {source_username} -p {source_password} {source_registry}"
+    #     )
+    # if target_registry and target_username and target_password:
+    #     docker_logins.append(
+    #         f"docker login -u {target_username} -p {target_password} {target_registry}"
+    #     )
+    # if docker_logins:
+    #     print("[bold blue]INFO: Executing registry logins...")
+    #     # for login in docker_logins:
+    #     #     subprocess.run(login)
 
 
 if __name__ == "__main__":
