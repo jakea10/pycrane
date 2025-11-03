@@ -124,8 +124,7 @@ def main(
                 for image in json.load(f)
             ]
     except FileNotFoundError:
-        console = Console(stderr=True)
-        console.print(f"Image file not found: '{image_file}'...")
+        err_console.print(f"Error: Image file not found: '{image_file}'")
         raise typer.Exit(code=1)
 
     if not force:
