@@ -1,42 +1,19 @@
 import docker
 import json
 import typer
+from dataclasses import dataclass
 from typing_extensions import Annotated
 from rich import print
 from rich.console import Console
 from rich.table import Table
 
 
+@dataclass
 class ContainerImage:
     name: str
     tag: str
     source_repo: str
     target_repo: str
-
-    def __init__(self, name: str, tag: str, source_repo: str, target_repo: str):
-        self.name = name
-        self.tag = tag
-        self.source_repo = source_repo
-        self.target_repo = target_repo
-
-    def __str__(self):
-        return f"{self.name}:{self.tag}"
-
-    def __repr__(self):
-        cls = self.__class__.__name__
-        return f"{cls}.{str(self)}"
-
-    def __eq__(self, other):
-        if self is other:  # Same object in memory
-            return True
-        if type(self) is not type(other):
-            return False
-        return [self.name, self.tag, self.source_repo, self.target_repo] == [
-            other.name,
-            other.tag,
-            other.source_repo,
-            other.target_repo,
-        ]
 
     @classmethod
     def from_dict(cls, d: dict):
@@ -116,19 +93,18 @@ def main(
         )
         raise typer.Exit(code=1)
 
+    # --- Parse container image data --- #
     try:
-        # Parse container image data
         with open(image_file, mode="r") as f:
             print("[bold blue]INFO: Parsing container image data...")
-            images = [
-                ContainerImage(
-                    image["name"],
-                    image["tag"],
-                    image["source_repo"],
-                    image["target_repo"],
-                )
-                for image in json.load(f)
-            ]
+            images = []
+            # images = [ContainerImage(**image_data) for image_data in json.load(f)]
+            for image_data in json.load(f):
+                try:
+                     images.append(ContainerImage(**image_data))
+                except TypeError as e:
+                    err_console.print(f"{error_prefix} Failed parsing container image data: received error: {e} while parsing image data: {image_data}")
+                    raise typer.Exit(code=1)
             print("[bold blue]INFO: Successfully parsed container image data.")
     except FileNotFoundError:
         err_console.print(f"{error_prefix} Image file not found: '{image_file}'")
