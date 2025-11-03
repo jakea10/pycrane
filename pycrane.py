@@ -100,7 +100,6 @@ def main(
         ),
     ] = None,
 ):
-    config = {}
     err_console = Console(stderr=True)
 
     if (source_username or source_password) and not source_registry:
@@ -115,7 +114,7 @@ def main(
         # Parse container image data
         with open(image_file, mode="r") as f:
             print("[bold blue]Parsing container image data...")
-            config["images"] = [
+            images = [
                 ContainerImage(
                     image["name"],
                     image["tag"],
@@ -133,7 +132,7 @@ def main(
         # Display parsed images and prompt user to continue
         console = Console()
         table = Table("REPOSITORY", "TAG", "SOURCE", "TARGET", title="Images")
-        for image in config["images"]:
+        for image in images:
             table.add_row(image.name, image.tag, image.source_repo, image.target_repo)
         console.print(table)
         user_continue = typer.confirm("Continue?", abort=True)
