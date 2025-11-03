@@ -54,6 +54,7 @@ def main(
         typer.Option(
             envvar="PYCRANE_SOURCE_PASSWORD",
             help="The password for login to the source registry.",
+            expose_value=False
         ),
     ] = None,
     target_registry: Annotated[
@@ -75,11 +76,13 @@ def main(
         typer.Option(
             envvar="PYCRANE_TARGET_PASSWORD",
             help="The password for login to the soutargetrce registry.",
+            expose_value=False
         ),
     ] = None,
 ):
     err_console = Console(stderr=True)
-    error_prefix = "[bold red]Error:[/]"
+    error_prefix = "[bold red]ERROR:[/]"
+    info_prefix = "[bold blue]INFO:[/]"
 
     if (source_username or source_password) and not source_registry:
         err_console.print(
@@ -96,7 +99,7 @@ def main(
     # --- Parse container image data --- #
     try:
         with open(image_file, mode="r") as f:
-            print("[bold blue]INFO: Parsing container image data...")
+            print(f"{info_prefix} Parsing container image data...")
             images = []
             # images = [ContainerImage(**image_data) for image_data in json.load(f)]
             for image_data in json.load(f):
@@ -105,7 +108,7 @@ def main(
                 except TypeError as e:
                     err_console.print(f"{error_prefix} Failed parsing container image data: received error: {e} while parsing image data: {image_data}")
                     raise typer.Exit(code=1)
-            print("[bold blue]INFO: Successfully parsed container image data.")
+            print(f"{info_prefix} Successfully parsed container image data.")
     except FileNotFoundError:
         err_console.print(f"{error_prefix} Image file not found: '{image_file}'")
         raise typer.Exit(code=1)
