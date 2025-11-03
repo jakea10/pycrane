@@ -1,7 +1,7 @@
 import docker
 import json
 import typer
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing_extensions import Annotated
 from rich import print
 from rich.console import Console
@@ -115,12 +115,12 @@ def main(
         console = Console()
         table = Table("REPOSITORY", "TAG", "SOURCE", "TARGET", title="Images")
         for image in images:
-            table.add_row(image.name, image.tag, image.source_repo, image.target_repo)
+            table.add_row(*asdict(image).values())
         console.print(table)
         user_continue = typer.confirm("Continue?", abort=True)
         print("Alrighty, let's go! :rocket:")
 
-    # --- Docker operations ---
+    # --- Docker operations --- #
     # If using Docker Desktop, you must allow the default Docker socket to be used
     client = docker.from_env()
 
