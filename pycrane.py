@@ -57,6 +57,13 @@ def main(
             envvar="SKIP_CONFIRMATION", help="Skip confirmation of parsed images"
         ),
     ] = False,
+    source_registry: Annotated[
+        str | None,
+        typer.Option(
+            envvar="PYCRANE_SOURCE_REGISTRY",
+            help="The source registry to pull container images from.",
+        ),
+    ] = None,
     source_username: Annotated[
         str | None,
         typer.Option(
@@ -69,6 +76,13 @@ def main(
         typer.Option(
             envvar="PYCRANE_SOURCE_PASSWORD",
             help="The password for login to the source registry.",
+        ),
+    ] = None,
+    target_registry: Annotated[
+        str | None,
+        typer.Option(
+            envvar="PYCRANE_TARGET_REGISTRY",
+            help="The target registry to push container images to.",
         ),
     ] = None,
     target_username: Annotated[
@@ -87,7 +101,16 @@ def main(
     ] = None,
 ):
     config = {}
+    err_console = Console(stderr=True)
 
+    if (source_username or source_password) and not source_registry:
+        err_console.print("Error: --source-registry is required when --source-username and --source-password are provided.")
+        raise typer.Exit(code=1)
+    
+    if (target_username or target_password) and not target_registry:
+        err_console.print("Error: --target-registry is required when --target-username and --target-password are provided.")
+        raise typer.Exit(code=1)
+    
     try:
         # Parse container image data
         with open(image_file, mode="r") as f:
