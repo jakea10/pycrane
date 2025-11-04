@@ -2,6 +2,7 @@ import docker
 import json
 import typer
 from dataclasses import dataclass, asdict
+from collections import namedtuple
 from typing_extensions import Annotated
 from rich import print
 from rich.console import Console
@@ -21,6 +22,9 @@ class ContainerImage:
         return container_image
 
 
+app = typer.Typer(pretty_exceptions_show_locals=False)
+
+@app.command()
 def main(
     image_file: Annotated[
         str,
@@ -54,7 +58,6 @@ def main(
         typer.Option(
             envvar="PYCRANE_SOURCE_PASSWORD",
             help="The password for login to the source registry.",
-            expose_value=False
         ),
     ] = None,
     target_registry: Annotated[
@@ -75,8 +78,7 @@ def main(
         str | None,
         typer.Option(
             envvar="PYCRANE_TARGET_PASSWORD",
-            help="The password for login to the soutargetrce registry.",
-            expose_value=False
+            help="The password for login to the target registry."
         ),
     ] = None,
 ):
@@ -124,37 +126,26 @@ def main(
         print("Alrighty, let's go! :rocket:")
 
     # --- Docker operations --- #
-    # If using Docker Desktop, you must allow the default Docker socket to be used
-    client = docker.from_env()
+    client = docker.from_env() # If using Docker Desktop, you must allow the default Docker socket to be used
+
+    RegistryLogin = namedtuple("RegistryLogin", ["username", "password", "registry"])
+    logins = []
 
     if source_registry and source_username and source_password:
-        try:
-            client.login(source_username, source_password, registry=source_registry)
-        except docker.errors.APIError as e:
-            err_console.print(e)
-            raise typer.Exit(code=1)
+        logins.append(RegistryLogin(source_username, source_password, source_registry))
 
     if target_registry and target_username and target_password:
+        logins.append(RegistryLogin(target_username, target_password, target_registry))
+    
+    for login in logins:
         try:
-            client.login(target_username, target_password, registry=target_registry)
+            response = client.login(login.username, login.password, registry=login.registry)
+            if response['Status'] == 'Login Succeeded':
+                print(f"{info_prefix} Login Succeeded to {login.registry}")
         except docker.errors.APIError as e:
-            err_console.print(e)
+            err_console.print(f"{error_prefix} {e}")
             raise typer.Exit(code=1)
-
-    # docker_logins = []
-    # if source_registry and source_username and source_password:
-    #     docker_logins.append(
-    #         f"docker login -u {source_username} -p {source_password} {source_registry}"
-    #     )
-    # if target_registry and target_username and target_password:
-    #     docker_logins.append(
-    #         f"docker login -u {target_username} -p {target_password} {target_registry}"
-    #     )
-    # if docker_logins:
-    #     print("[bold blue]INFO: Executing registry logins...")
-    #     # for login in docker_logins:
-    #     #     subprocess.run(login)
 
 
 if __name__ == "__main__":
-    typer.run(main)
+    app()
