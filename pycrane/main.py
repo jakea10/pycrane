@@ -25,6 +25,7 @@ class ContainerImage:
 
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
+
 @app.command()
 def main(
     image_file: Annotated[
@@ -79,7 +80,7 @@ def main(
         str | None,
         typer.Option(
             envvar="PYCRANE_TARGET_PASSWORD",
-            help="The password for login to the target registry."
+            help="The password for login to the target registry.",
         ),
     ] = None,
 ):
@@ -107,9 +108,11 @@ def main(
             # images = [ContainerImage(**image_data) for image_data in json.load(f)]
             for image_data in json.load(f):
                 try:
-                     images.append(ContainerImage(**image_data))
+                    images.append(ContainerImage(**image_data))
                 except TypeError as e:
-                    err_console.print(f"{error_prefix} Failed parsing container image data: received error: {e} while parsing image data: {image_data}")
+                    err_console.print(
+                        f"{error_prefix} Failed parsing container image data: received error: {e} while parsing image data: {image_data}"
+                    )
                     raise typer.Exit(code=1)
             print(f"{info_prefix} Successfully parsed container image data.")
     except FileNotFoundError:
@@ -127,7 +130,9 @@ def main(
         print("Alrighty, let's go! :rocket:")
 
     # --- Docker logins --- #
-    client = docker.from_env() # If using Docker Desktop, you must allow the default Docker socket to be used
+    client = (
+        docker.from_env()
+    )  # If using Docker Desktop, you must allow the default Docker socket to be used
 
     RegistryLogin = namedtuple("RegistryLogin", ["username", "password", "registry"])
     logins = []
@@ -137,16 +142,18 @@ def main(
 
     if target_registry and target_username and target_password:
         logins.append(RegistryLogin(target_username, target_password, target_registry))
-    
+
     for login in logins:
         try:
-            response = client.login(login.username, login.password, registry=login.registry)
-            if response['Status'] == 'Login Succeeded':
+            response = client.login(
+                login.username, login.password, registry=login.registry
+            )
+            if response["Status"] == "Login Succeeded":
                 print(f'{info_prefix} Login Succeeded to "{login.registry}"')
         except docker.errors.APIError as e:
             err_console.print(f"{error_prefix} {e}")
             raise typer.Exit(code=1)
-    
+
     # --- Transfer images --- #
     for image in images:
         source = f"{image.source_repo}:{image.tag}"
@@ -166,7 +173,7 @@ def main(
             err_console.print(f"{error_prefix} {e}")
             raise typer.Exit(code=1)
         print(f'{info_prefix} Successfully pulled image "{source}".')
-        
+
         # Re-tag
         try:
             pulled.tag(repository=image.target_repo, tag=image.tag)
@@ -174,7 +181,7 @@ def main(
             err_console.print(f"{error_prefix} {e}")
             raise typer.Exit(code=1)
         print(f'{info_prefix} Re-tagged "{source}" as "{target}".')
-        
+
         # Push
         print(f'{info_prefix} Pushing image "{target}"...')
         try:
@@ -182,7 +189,9 @@ def main(
             # Verify push
             exit_code = os.system(f"docker manifest inspect {target} > /dev/null 2>&1")
             if exit_code:
-                print(f'{error_prefix} Push failed for "{target}". Remote response: {resp}')
+                print(
+                    f'{error_prefix} Push failed for "{target}". Remote response: {resp}'
+                )
                 raise typer.Exit(code=1)
         except docker.errors.APIError as e:
             err_console.print(f"{error_prefix} {e}")
