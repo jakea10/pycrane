@@ -1,9 +1,10 @@
 import docker
 import json
 import typer
+import os
 from dataclasses import dataclass, asdict
 from collections import namedtuple
-from typing_extensions import Annotated
+from typing_extensions import Annotated, List
 from rich import print
 from rich.console import Console
 from rich.table import Table
@@ -102,7 +103,7 @@ def main(
     try:
         with open(image_file, mode="r") as f:
             print(f"{info_prefix} Parsing container image data...")
-            images = []
+            images: List[ContainerImage] = []
             # images = [ContainerImage(**image_data) for image_data in json.load(f)]
             for image_data in json.load(f):
                 try:
@@ -125,7 +126,7 @@ def main(
         user_continue = typer.confirm("Continue?", abort=True)
         print("Alrighty, let's go! :rocket:")
 
-    # --- Docker operations --- #
+    # --- Docker logins --- #
     client = docker.from_env() # If using Docker Desktop, you must allow the default Docker socket to be used
 
     RegistryLogin = namedtuple("RegistryLogin", ["username", "password", "registry"])
@@ -141,10 +142,52 @@ def main(
         try:
             response = client.login(login.username, login.password, registry=login.registry)
             if response['Status'] == 'Login Succeeded':
-                print(f"{info_prefix} Login Succeeded to {login.registry}")
+                print(f'{info_prefix} Login Succeeded to "{login.registry}"')
         except docker.errors.APIError as e:
             err_console.print(f"{error_prefix} {e}")
             raise typer.Exit(code=1)
+    
+    # --- Transfer images --- #
+    for image in images:
+        source = f"{image.source_repo}:{image.tag}"
+        target = f"{image.target_repo}:{image.tag}"
+
+        # Check if image already exists in target repo
+        exit_code = os.system(f"docker manifest inspect {target} > /dev/null 2>&1")
+        if exit_code == 0:
+            print(f'{info_prefix} Target image "{target}" already exists. Skipping...')
+            continue
+
+        # Pull the source image
+        print(f'{info_prefix} Pulling image "{source}"...')
+        try:
+            pulled = client.images.pull(repository=image.source_repo, tag=image.tag)
+        except docker.errors.APIError as e:
+            err_console.print(f"{error_prefix} {e}")
+            raise typer.Exit(code=1)
+        print(f'{info_prefix} Successfully pulled image "{source}".')
+        
+        # Re-tag
+        try:
+            pulled.tag(repository=image.target_repo, tag=image.tag)
+        except docker.errors.APIError as e:
+            err_console.print(f"{error_prefix} {e}")
+            raise typer.Exit(code=1)
+        print(f'{info_prefix} Re-tagged "{source}" as "{target}".')
+        
+        # Push
+        print(f'{info_prefix} Pushing image "{target}"...')
+        try:
+            resp = client.images.push(repository=image.target_repo, tag=image.tag)
+            # Verify push
+            exit_code = os.system(f"docker manifest inspect {target} > /dev/null 2>&1")
+            if exit_code:
+                print(f'{error_prefix} Push failed for "{target}". Remote response: {resp}')
+                raise typer.Exit(code=1)
+        except docker.errors.APIError as e:
+            err_console.print(f"{error_prefix} {e}")
+            raise typer.Exit(code=1)
+        print(f'{info_prefix} Successfully pushed image "{target}".')
 
 
 if __name__ == "__main__":
