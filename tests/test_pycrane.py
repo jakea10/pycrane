@@ -11,6 +11,7 @@ from pycrane.pycrane import ContainerImage
 
 runner = CliRunner()
 
+
 def test_version():
     result = runner.invoke(cli.app, ["--version"])
     assert result.exit_code == 0
@@ -21,25 +22,25 @@ def test_version():
 
 
 image_data = [
-        {
-            "name": "my-app/web",
-            "tag": "latest",
-            "source_repo": "registry.source.com/apps/my-app/web",
-            "target_repo": "registry.target.com/my-app/web"
-        },
-        {
-            "name": "another-app/server",
-            "tag": "1.2.3",
-            "source_repo": "registry.source.com/apps/another-app/server",
-            "target_repo": "registry.target.com/another-app/server"
-        },
-        {
-            "name": "nginx",
-            "tag": "latest",
-            "source_repo": "registry.source.com/nginx",
-            "target_repo": "registry.target.com/nginx"
-        }
-    ]
+    {
+        "name": "my-app/web",
+        "tag": "latest",
+        "source_repo": "registry.source.com/apps/my-app/web",
+        "target_repo": "registry.target.com/my-app/web",
+    },
+    {
+        "name": "another-app/server",
+        "tag": "1.2.3",
+        "source_repo": "registry.source.com/apps/another-app/server",
+        "target_repo": "registry.target.com/another-app/server",
+    },
+    {
+        "name": "nginx",
+        "tag": "latest",
+        "source_repo": "registry.source.com/nginx",
+        "target_repo": "registry.target.com/nginx",
+    },
+]
 
 
 @pytest.fixture
@@ -55,4 +56,3 @@ def test_parse_images(mock_image_file):
     assert len(images) == 3
     for image in images:
         assert type(image) is ContainerImage
-    
