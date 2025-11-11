@@ -51,6 +51,15 @@ def mock_image_file(tmp_path: Path):
     return image_file
 
 
+def test_container_image():
+    for item in image_data:
+        image: ContainerImage = ContainerImage(**item)
+        assert image.name == item["name"]
+        assert image.tag == item["tag"]
+        assert image.source_repo == item["source_repo"]
+        assert image.target_repo == item["target_repo"]
+
+
 def test_parse_images(mock_image_file):
     images: List[ContainerImage] = cli._parse_images(mock_image_file)
     assert len(images) == 3
