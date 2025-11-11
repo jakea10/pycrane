@@ -20,9 +20,7 @@ def test_version():
     assert f"{__app_name__} v{__version__}\n" in result.stdout
 
 
-@pytest.fixture
-def mock_image_file(tmp_path: Path):
-    image_data = [
+image_data = [
         {
             "name": "my-app/web",
             "tag": "latest",
@@ -42,6 +40,10 @@ def mock_image_file(tmp_path: Path):
             "target_repo": "registry.target.com/nginx"
         }
     ]
+
+
+@pytest.fixture
+def mock_image_file(tmp_path: Path):
     image_file = tmp_path / "images.json"
     with image_file.open("w") as f:
         json.dump(image_data, f)
@@ -53,5 +55,4 @@ def test_parse_images(mock_image_file):
     assert len(images) == 3
     for image in images:
         assert type(image) is ContainerImage
-    
     
