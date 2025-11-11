@@ -1,14 +1,20 @@
 [
     {
-        "name": "my-image",
+        "name": "my-app/web",
         "tag": "latest",
-        "source_repo": "registry.source.com/my-image",
-        "target_repo": "registry.target.com/my-image"
+        "source_repo": "registry.source.com/apps/my-app/web",
+        "target_repo": "registry.target.com/my-app/web"
     },
     {
-        "name": "another-image",
+        "name": "another-app/server",
         "tag": "1.2.3",
-        "source_repo": "registry.source.com/another-image",
-        "target_repo": "registry.target.com/another-image"
+        "source_repo": "registry.source.com/apps/another-app/server",
+        "target_repo": "registry.target.com/another-app/server"
+    },
+    {
+        "name": "nginx",
+        "tag": "latest",
+        "source_repo": "registry.source.com/nginx",
+        "target_repo": "registry.target.com/nginx"
     }
 ]
