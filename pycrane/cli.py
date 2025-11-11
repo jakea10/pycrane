@@ -106,7 +106,7 @@ def main(
     ] = None,
     version: Annotated[
         bool | None,
-        typer.Option("--version", "-v", callback=_version_callback, is_eager=True)
+        typer.Option("--version", "-v", callback=_version_callback, is_eager=True),
     ] = None,
 ):
     if (source_username or source_password) and not source_registry:
