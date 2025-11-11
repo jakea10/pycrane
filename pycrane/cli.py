@@ -7,6 +7,7 @@ from typing_extensions import Annotated, List
 from rich import print
 from rich.console import Console
 from rich.table import Table
+from pycrane import ___app_name__, __version__
 from pycrane.pycrane import ContainerImage, RegistryLogin
 
 
@@ -40,8 +41,18 @@ def _parse_images(image_file: str) -> List[ContainerImage]:
     return images
 
 
+def _version_callback(value: bool) -> None:
+    if value:
+        print(f"[bold cyan]{___app_name__} v{__version__}[/]")
+        raise typer.Exit()
+
+
 @app.command()
 def main(
+    version: Annotated[
+        bool | None,
+        typer.Option("--version", "-v", callback=_version_callback, is_eager=True)
+    ],
     image_file: Annotated[
         str,
         typer.Argument(
