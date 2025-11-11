@@ -2,28 +2,42 @@ import docker
 import json
 import typer
 import os
-from dataclasses import dataclass, asdict
-from collections import namedtuple
+from dataclasses import asdict
 from typing_extensions import Annotated, List
 from rich import print
 from rich.console import Console
 from rich.table import Table
-
-
-@dataclass
-class ContainerImage:
-    name: str
-    tag: str
-    source_repo: str
-    target_repo: str
-
-    @classmethod
-    def from_dict(cls, d: dict):
-        container_image = cls(d["name"], d["tag"], d["source_repo"], d["target_repo"])
-        return container_image
+from pycrane.pycrane import ContainerImage, RegistryLogin
 
 
 app = typer.Typer(pretty_exceptions_show_locals=False)
+ERR_CONSOLE = Console(stderr=True)
+ERR_PREFIX = "[bold red]ERROR:[/]"
+INFO_PREFIX = "[bold blue]INFO:[/]"
+
+
+def _parse_images(image_file: str) -> List[ContainerImage]:
+    try:
+        with open(image_file, mode="r") as f:
+            print(f"{INFO_PREFIX} Parsing container image data...")
+            images: List[ContainerImage] = []
+            # images = [ContainerImage(**image_data) for image_data in json.load(f)]
+            for image_data in json.load(f):
+                try:
+                    images.append(ContainerImage(**image_data))
+                except TypeError as e:
+                    ERR_CONSOLE.print(
+                        f"{ERR_PREFIX} Failed parsing container image data: received error: {e} while parsing image data: {image_data}"
+                    )
+                    raise typer.Exit(code=1)
+            print(f"{INFO_PREFIX} Successfully parsed container image data.")
+    except FileNotFoundError:
+        ERR_CONSOLE.print(f"{ERR_PREFIX} Image file not found: '{image_file}'")
+        raise typer.Exit(code=1)
+    except IOError as e:
+        ERR_CONSOLE.print(f"{ERR_PREFIX} {e}'")
+        raise typer.Exit(code=1)
+    return images
 
 
 @app.command()
@@ -84,40 +98,20 @@ def main(
         ),
     ] = None,
 ):
-    err_console = Console(stderr=True)
-    error_prefix = "[bold red]ERROR:[/]"
-    info_prefix = "[bold blue]INFO:[/]"
-
     if (source_username or source_password) and not source_registry:
-        err_console.print(
-            f"{error_prefix} --source-registry is required when --source-username and --source-password are provided."
+        ERR_CONSOLE.print(
+            f"{ERR_PREFIX} --source-registry is required when --source-username and --source-password are provided."
         )
         raise typer.Exit(code=1)
 
     if (target_username or target_password) and not target_registry:
-        err_console.print(
-            f"{error_prefix} --target-registry is required when --target-username and --target-password are provided."
+        ERR_CONSOLE.print(
+            f"{ERR_PREFIX} --target-registry is required when --target-username and --target-password are provided."
         )
         raise typer.Exit(code=1)
 
     # --- Parse container image data --- #
-    try:
-        with open(image_file, mode="r") as f:
-            print(f"{info_prefix} Parsing container image data...")
-            images: List[ContainerImage] = []
-            # images = [ContainerImage(**image_data) for image_data in json.load(f)]
-            for image_data in json.load(f):
-                try:
-                    images.append(ContainerImage(**image_data))
-                except TypeError as e:
-                    err_console.print(
-                        f"{error_prefix} Failed parsing container image data: received error: {e} while parsing image data: {image_data}"
-                    )
-                    raise typer.Exit(code=1)
-            print(f"{info_prefix} Successfully parsed container image data.")
-    except FileNotFoundError:
-        err_console.print(f"{error_prefix} Image file not found: '{image_file}'")
-        raise typer.Exit(code=1)
+    images = _parse_images(image_file)
 
     if not force:
         # Display parsed images and prompt user to continue
@@ -134,8 +128,7 @@ def main(
         docker.from_env()
     )  # If using Docker Desktop, you must allow the default Docker socket to be used
 
-    RegistryLogin = namedtuple("RegistryLogin", ["username", "password", "registry"])
-    logins = []
+    logins: List[RegistryLogin] = []
 
     if source_registry and source_username and source_password:
         logins.append(RegistryLogin(source_username, source_password, source_registry))
@@ -149,9 +142,9 @@ def main(
                 login.username, login.password, registry=login.registry
             )
             if response["Status"] == "Login Succeeded":
-                print(f'{info_prefix} Login Succeeded to "{login.registry}"')
+                print(f'{INFO_PREFIX} Login Succeeded to "{login.registry}"')
         except docker.errors.APIError as e:
-            err_console.print(f"{error_prefix} {e}")
+            ERR_CONSOLE.print(f"{ERR_PREFIX} {e}")
             raise typer.Exit(code=1)
 
     # --- Transfer images --- #
@@ -162,41 +155,41 @@ def main(
         # Check if image already exists in target repo
         exit_code = os.system(f"docker manifest inspect {target} > /dev/null 2>&1")
         if exit_code == 0:
-            print(f'{info_prefix} Target image "{target}" already exists. Skipping...')
+            print(f'{INFO_PREFIX} Target image "{target}" already exists. Skipping...')
             continue
 
         # Pull the source image
-        print(f'{info_prefix} Pulling image "{source}"...')
+        print(f'{INFO_PREFIX} Pulling image "{source}"...')
         try:
             pulled = client.images.pull(repository=image.source_repo, tag=image.tag)
         except docker.errors.APIError as e:
-            err_console.print(f"{error_prefix} {e}")
+            ERR_CONSOLE.print(f"{ERR_PREFIX} {e}")
             raise typer.Exit(code=1)
-        print(f'{info_prefix} Successfully pulled image "{source}".')
+        print(f'{INFO_PREFIX} Successfully pulled image "{source}".')
 
         # Re-tag
         try:
             pulled.tag(repository=image.target_repo, tag=image.tag)
         except docker.errors.APIError as e:
-            err_console.print(f"{error_prefix} {e}")
+            ERR_CONSOLE.print(f"{ERR_PREFIX} {e}")
             raise typer.Exit(code=1)
-        print(f'{info_prefix} Re-tagged "{source}" as "{target}".')
+        print(f'{INFO_PREFIX} Re-tagged "{source}" as "{target}".')
 
         # Push
-        print(f'{info_prefix} Pushing image "{target}"...')
+        print(f'{INFO_PREFIX} Pushing image "{target}"...')
         try:
             resp = client.images.push(repository=image.target_repo, tag=image.tag)
             # Verify push
             exit_code = os.system(f"docker manifest inspect {target} > /dev/null 2>&1")
             if exit_code:
                 print(
-                    f'{error_prefix} Push failed for "{target}". Remote response: {resp}'
+                    f'{ERR_PREFIX} Push failed for "{target}". Remote response: {resp}'
                 )
                 raise typer.Exit(code=1)
         except docker.errors.APIError as e:
-            err_console.print(f"{error_prefix} {e}")
+            ERR_CONSOLE.print(f"{ERR_PREFIX} {e}")
             raise typer.Exit(code=1)
-        print(f'{info_prefix} Successfully pushed image "{target}".')
+        print(f'{INFO_PREFIX} Successfully pushed image "{target}".')
 
 
 if __name__ == "__main__":

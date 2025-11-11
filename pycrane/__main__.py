@@ -1,6 +1,6 @@
 """Pycrane entry point script."""
 
-from pycrane import ___app_name__, main
+from pycrane import ___app_name__, cli
 
 
-main.app(prog_name=___app_name__)
+cli.app(prog_name=___app_name__)
